@@ -1,57 +1,261 @@
-<!DOCTYPE html>
+<!doctype html>
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Background Remover</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Background Remover — Pro UI</title>
+  <style>
+    :root{
+      --bg:#0d0d0f; --card:#111216; --muted:#9aa0a6; --accent1:#00eaff; --accent2:#7b4bff; --accent-grad: linear-gradient(90deg,var(--accent1),var(--accent2));
+      --glass: rgba(255,255,255,0.03);
+      --success:#00ff9d;
+    }
+    @media (prefers-color-scheme:light){
+      :root{ --bg:#f6f8fb; --card:#ffffff; --muted:#656d76; --accent1:#0066ff; --accent2:#00eaff; --glass: rgba(0,0,0,0.03); }
+      body{color:#0b0b0b}
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--bg); font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Poppins', Arial; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      display:flex; align-items:center; justify-content:center; min-height:100vh; padding:28px;
+    }/* container */
+.wrap{ width:100%; max-width:980px; display:grid; grid-template-columns:1fr 420px; gap:28px; align-items:start;}
+@media(max-width:880px){ .wrap{grid-template-columns:1fr; padding:0 12px} }
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 40px;
-        }
-        #result-img {
-            margin-top: 20px;
-            max-width: 90%;
-        }
-    </style>
+/* left area: hero + editor */
+.left{
+  padding:26px; border-radius:14px; background:linear-gradient(180deg, rgba(255,255,255,0.03), transparent); box-shadow:0 8px 30px rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.03);
+}
+
+header.logo{ display:flex; gap:14px; align-items:center; margin-bottom:18px }
+.logo svg{ width:56px; height:56px; filter:drop-shadow(0 6px 18px rgba(0,0,0,0.45)); border-radius:10px }
+.brand{ font-weight:700; font-size:20px }
+.tag{ color:var(--muted); font-size:13px }
+
+h1{ margin:6px 0 10px; font-size:28px }
+p.lead{ color:var(--muted); margin:0 0 18px }
+
+/* upload area */
+.upload{
+  display:flex; gap:14px; align-items:center; padding:16px; border-radius:12px; border:1px dashed rgba(255,255,255,0.06); background:var(--glass); transition:all .18s ease; cursor:pointer; user-select:none;
+}
+.upload.dragover{ transform:translateY(-4px) scale(1.01); box-shadow:0 14px 40px rgba(0,0,0,0.35); border-color:rgba(0,230,255,0.85) }
+.upload .icon{ width:56px; height:56px; display:grid; place-items:center; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
+.upload .meta{ flex:1; text-align:left }
+.upload small{ color:var(--muted); display:block }
+
+input[type=file]{ display:none }
+
+/* preview + actions */
+.preview{ margin-top:16px; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.03) }
+.preview .canvas-wrap{ min-height:220px; display:grid; place-items:center; background:linear-gradient(180deg, rgba(0,0,0,0.02), transparent); }
+img#result{ max-width:100%; height:auto; display:block }
+
+.actions{ display:flex; gap:12px; margin-top:12px }
+.btn{ padding:12px 18px; border-radius:12px; border:0; cursor:pointer; font-weight:600; letter-spacing:0.2px }
+.btn.primary{ background:var(--accent-grad); color:#ffffff; box-shadow: 0 8px 30px rgba(123,75,255,0.12); transform:translateZ(0); transition:transform .18s ease }
+.btn.primary:hover{ transform:translateY(-4px) scale(1.02) }
+.btn.ghost{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.04) }
+
+/* right sidebar card */
+.card{ padding:22px; border-radius:14px; background:var(--card); box-shadow:0 10px 40px rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.03) }
+.card h3{ margin:0 0 12px }
+.small{ font-size:13px; color:var(--muted) }
+
+/* neon download */
+.download{ margin-top:14px; display:inline-block; padding:12px 16px; border-radius:12px; background:var(--success); color:#001; font-weight:700; text-decoration:none }
+
+/* loader overlay */
+.overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:9999 }
+.overlay.show{ display:flex }
+.spinner{ width:72px; height:72px; border-radius:100%; border:8px solid rgba(255,255,255,0.06); border-top-color:var(--accent1); animation:spin .95s linear infinite }
+@keyframes spin{ to{ transform:rotate(360deg) }}
+
+/* 3D hover card effect */
+.card-3d{ perspective:900px }
+.card-3d .inner{ transform-style:preserve-3d; transition: transform .25s ease }
+.card-3d:hover .inner{ transform: rotateX(6deg) rotateY(-6deg) translateZ(6px) }
+
+footer{ margin-top:22px; text-align:center; color:var(--muted); font-size:13px }
+
+  </style>
 </head>
 <body>
+  <div class="overlay" id="overlay"><div class="spinner"></div></div>  <div class="wrap"><div class="left">
+  <header class="logo">
+    <!-- Logo (SVG) -->
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#00eaff"/><stop offset="1" stop-color="#7b4bff"/></linearGradient></defs><rect width="64" height="64" rx="12" fill="url(#g)"/><g transform="translate(8 8)" fill="#fff"><path d="M8 6h16v4H8z" opacity="0.95"/><path d="M8 14h16v26H8z" opacity="0.9"/></g></svg>
+    <div>
+      <div class="brand">Background Remover Pro</div>
+      <div class="tag">Fast • Clean • Mobile-ready</div>
+    </div>
+  </header>
 
-    <h2>Background Remover (Free API, No Key Needed)</h2>
+  <h1>Remove backgrounds in one tap</h1>
+  <p class="lead">Upload any photo, get a clean transparent PNG. Works perfectly for portraits, products and creative edits.</p>
 
-    <input type="file" id="imageInput" accept="image/*"><br><br>
+  <label class="upload" id="dropzone">
+    <div class="icon">📤</div>
+    <div class="meta">
+      <strong id="upload-title">Tap or drop an image</strong>
+      <small id="upload-sub">Supports JPG, PNG. Max 10MB</small>
+    </div>
+    <input type="file" id="file" accept="image/*" />
+  </label>
 
-    <button onclick="removeBG()">Remove Background</button>
+  <div class="preview card-3d" style="margin-top:16px">
+    <div class="inner">
+      <div class="canvas-wrap" id="canvas-wrap">
+        <div style="text-align:center; color:var(--muted); padding:28px">No image yet — upload to see preview</div>
+        <img id="result" alt="result image" />
+      </div>
+    </div>
+  </div>
 
-    <div id="output"></div>
+  <div class="actions">
+    <button class="btn primary" id="processBtn">Remove Background</button>
+    <button class="btn ghost" id="clearBtn">Clear</button>
+  </div>
 
-    <script>
-        async function removeBG() {
+  <footer>Pro UI by you — built with love ❤️</footer>
+</div>
 
-            let file = document.getElementById("imageInput").files[0];
-            if (!file) {
-                alert("Please upload an image first.");
-                return;
-            }
+<aside class="card">
+  <h3>Output & Settings</h3>
+  <div class="small">Preview, download and advanced options</div>
 
-            let formData = new FormData();
-            formData.append("image_file", file);
+  <div style="margin-top:12px">
+    <label style="display:block; font-size:13px; margin-bottom:6px">API Endpoint</label>
+    <input id="apiUrl" placeholder="/remove-bg or https://yourserver.com/remove-bg" style="width:100%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit" />
+    <small style="color:var(--muted)">Leave blank to use built-in demo (client-side)</small>
+  </div>
 
-            let res = await fetch("https://clipdrop-api.co/remove-background/v1", {
-                method: "POST",
-                headers: { "x-api-key": "clipdrop-xxxxxxxxxxxxxxxxxxxxxx" },
-                body: formData
-            });
+  <div style="margin-top:12px; display:flex; gap:8px; align-items:center">
+    <input type="checkbox" id="autoDL" checked /> <label for="autoDL" style="font-size:13px">Auto download after processing</label>
+  </div>
 
-            let blob = await res.blob();
-            let url = URL.createObjectURL(blob);
+  <a id="downloadLink" class="download" style="display:none">Download PNG</a>
+  <div style="margin-top:12px; color:var(--muted); font-size:13px">Tips: For production use, host a small server running rembg and set that URL above.</div>
+</aside>
 
-            document.getElementById("output").innerHTML =
-                `<img id="result-img" src="${url}">`;
+  </div>  <script>
+    // Elements
+    const file = document.getElementById('file');
+    const dropzone = document.getElementById('dropzone');
+    const result = document.getElementById('result');
+    const processBtn = document.getElementById('processBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const overlay = document.getElementById('overlay');
+    const apiUrlInput = document.getElementById('apiUrl');
+    const downloadLink = document.getElementById('downloadLink');
+    const autoDL = document.getElementById('autoDL');
+
+    let currentBlobUrl = null;
+
+    // Drag & Drop UX
+    ['dragenter','dragover'].forEach(evt => {
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave','drop'].forEach(evt => {
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', e => {
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) setFile(f);
+    });
+
+    dropzone.addEventListener('click', _ => file.click());
+    file.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
+
+    function setFile(f){
+      const title = document.getElementById('upload-title');
+      title.textContent = f.name;
+      readFileToPreview(f);
+    }
+
+    function readFileToPreview(f){
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+        result.src = reader.result; result.style.display = 'block';
+        downloadLink.style.display = 'none';
+      };
+      reader.readAsDataURL(f);
+    }
+
+    clearBtn.addEventListener('click', () => {
+      result.src = '';
+      result.style.display = 'none';
+      downloadLink.style.display = 'none';
+      file.value = '';
+      document.getElementById('upload-title').textContent = 'Tap or drop an image';
+    });
+
+    processBtn.addEventListener('click', async () => {
+      const f = file.files[0];
+      if (!f) { alert('Please upload an image first'); return; }
+
+      overlay.classList.add('show');
+
+      const apiUrl = apiUrlInput.value.trim();
+      try{
+        let outBlob;
+        if (apiUrl){
+          // send to user's server
+          const fd = new FormData(); fd.append('image', f);
+          const resp = await fetch(apiUrl, { method:'POST', body:fd });
+          if (!resp.ok) throw new Error('Server error');
+          outBlob = await resp.blob();
+        } else {
+          // client-side fallback: fast but low-quality alpha mask simulation
+          outBlob = await demoRemoveBgClientSide(f);
         }
-    </script>
 
-</body>
-</html>
+        // show result
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+        currentBlobUrl = URL.createObjectURL(outBlob);
+        result.src = currentBlobUrl; result.style.display = 'block';
+
+        // prepare download
+        downloadLink.href = currentBlobUrl; downloadLink.download = 'bg-removed.png'; downloadLink.style.display = 'inline-block';
+        if (autoDL.checked) downloadLink.click();
+
+      }catch(err){
+        console.error(err); alert('Error processing image. Check console or change API endpoint.');
+      }finally{ overlay.classList.remove('show'); }
+    });
+
+    // Simple demo background removal (fast client-side) — naive: makes near-white pixels transparent and outputs PNG
+    async function demoRemoveBgClientSide(fileObj){
+      return new Promise((resolve,reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = () => { img.src = reader.result; };
+        reader.onerror = reject;
+        img.onload = () => {
+          const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+          const ctx = c.getContext('2d'); ctx.drawImage(img,0,0);
+          try{
+            const id = ctx.getImageData(0,0,c.width,c.height);
+            const d = id.data;
+            for (let i=0;i<d.length;i+=4){
+              const r=d[i], g=d[i+1], b=d[i+2];
+              // if very light pixel, make transparent (adjust thresholds if needed)
+              if (r>240 && g>240 && b>240){ d[i+3]=0; }
+            }
+            ctx.putImageData(id,0,0);
+            c.toBlob(blob => resolve(blob), 'image/png');
+          }catch(e){ reject(e); }
+        };
+        reader.readAsDataURL(fileObj);
+      });
+    }
+
+    // accessibility: keyboard
+    processBtn.addEventListener('keyup', e => { if (e.key==='Enter') processBtn.click(); });
+
+    // set default api placeholder
+    apiUrlInput.value = '';
+  </script></body>
+    </html>
