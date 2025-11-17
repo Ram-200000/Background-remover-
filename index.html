@@ -1,179 +1,366 @@
-<!doctype html>
-
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Background Remover — Pro Advance</title>  <style>
-    :root{
-      --bg:#0d0d0f; --card:#111216; --muted:#9aa0a6; --accent1:#00eaff; --accent2:#7b4bff; --accent-grad: linear-gradient(90deg,var(--accent1),var(--accent2));
-      --glass: rgba(255,255,255,0.03);
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Background Remover</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d0d0d;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
     }
-    body{
-      margin:0; background:var(--bg); color:white; font-family:Poppins,system-ui; padding:22px; display:flex; justify-content:center;
+    .container {
+      max-width: 900px;
+      margin: auto;
     }
+    #uploadBox {
+      border: 2px dashed #555;
+      padding: 40px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      background: #111;
+    }
+    #uploadBox:hover {
+      border-color: #00eaff;
+    }
+    #canvasWrapper {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    canvas {
+      background: #222;
+      width: 100%;
+      border-radius: 10px;
+    }
+    .btn {
+      background: #00eaff;
+      border: none;
+      padding: 12px 24px;
+      color: #000;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px;
+    }
+    .btn:hover {
+      opacity: 0.8;
+    }
+    .tools {
+      margin-top: 10px;
+    }
+    input[type="range"] {
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Background Remover</h1><div id="uploadBox">Tap to Upload Image</div>
+<input type="file" id="fileInput" accept="image/*" hidden />
 
-    .container{ max-width:1100px; width:100%; }
-
-    h1{ font-size:28px; margin-bottom:12px }
-
-    /* Upload */
-    .upload-box{ padding:18px; background:var(--glass); border:1px dashed rgba(255,255,255,0.08); border-radius:14px; text-align:center; cursor:pointer; }
-    .upload-box:hover{ border-color:var(--accent1) }
-    input[type=file]{ display:none }
-
-    /* Before After */
-    .compare-wrap{ position:relative; width:100%; margin-top:20px; border-radius:14px; overflow:hidden; }
-    .compare-wrap img{ width:100%; display:block }
-    .after-img{ position:absolute; inset:0; width:50%; overflow:hidden; }
-    .after-img img{ width:200%; height:100%; object-fit:cover }
-    .slider{ position:absolute; top:0; bottom:0; left:50%; width:4px; background:var(--accent1); cursor:ew-resize }
-
-    /* Brush Tools */
-    .tools{ margin-top:22px; display:flex; gap:14px; align-items:center }
-    .btn{ padding:10px 16px; border-radius:10px; border:0; cursor:pointer; background:var(--accent-grad); color:#000; font-weight:600 }
-    .btn.secondary{ background:#333; color:white }
-    .canvas-area{ margin-top:18px; border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; position:relative }
-    #maskCanvas{ position:absolute; inset:0; }
-
-    #downloadBtn{ margin-top:16px; display:none; padding:14px 18px; border-radius:14px; background:#00ff9d; border:0; font-weight:700; cursor:pointer }
-
-  </style></head>
-<body><div class="container">
-  <h1>Advanced Background Remover (Brush + AI)</h1>  <label class="upload-box" id="uploadBox">
-    <strong>Click to upload image</strong><br>
-    <small>PNG / JPG</small>
-    <input type="file" id="fileInput" accept="image/*" />
-  </label>  <!-- Before / After Compare -->  <div class="compare-wrap" id="compareWrap" style="display:none">
-    <img id="beforeImg" /><div class="after-img" id="afterContainer">
-  <img id="afterImg" />
+<div class="tools">
+  <button class="btn" id="brushMode">Enable Brush</button>
+  <button class="btn" id="undoBtn">Undo</button>
+  <button class="btn" id="redoBtn">Redo</button>
+  <button class="btn" id="processBtn">Remove Background</button>
+  <br>
+  <label>Brush Size:</label>
+  <input type="range" min="5" max="80" value="20" id="brushSize">
+  <br>
+  <label>Brush Softness:</label>
+  <input type="range" min="0" max="1" step="0.05" value="0.3" id="brushSoftness">
 </div>
 
-<div class="slider" id="slider"></div>
+<div id="canvasWrapper">
+  <div>
+    <p>Before</p>
+    <canvas id="beforeCanvas"></canvas>
+  </div>
+  <div>
+    <p>After</p>
+    <canvas id="afterCanvas"></canvas>
+    <button class="btn" id="downloadBtn">Download</button>
+  </div>
+</div>
 
-  </div>  <!-- Brush Tools -->  <div class="tools" id="tools" style="display:none">
-    <button class="btn" id="brushBtn">Brush Select</button>
-    <button class="btn secondary" id="eraseBtn">Erase Brush</button>
-    <button class="btn secondary" id="processBtn">AI Remove Background</button>
-  </div>  <div class="canvas-area" id="canvasArea" style="display:none">
-    <canvas id="mainCanvas"></canvas>
-    <canvas id="maskCanvas"></canvas>
-  </div><button id="downloadBtn">Download Final Image</button>
+  </div>  <script>
+    const uploadBox = document.getElementById("uploadBox");
+    const fileInput = document.getElementById("fileInput");
+    const beforeCanvas = document.getElementById("beforeCanvas");
+    const afterCanvas = document.getElementById("afterCanvas");
+    const brushModeBtn = document.getElementById("brushMode");
+    const undoBtn = document.getElementById("undoBtn");
+    const redoBtn = document.getElementById("redoBtn");
+    const processBtn = document.getElementById("processBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const brushSizeSlider = document.getElementById("brushSize");
+    const brushSoftnessSlider = document.getElementById("brushSoftness");
 
-</div><script>
-  const fileInput = document.getElementById('fileInput');
-  const uploadBox = document.getElementById('uploadBox');
-  const beforeImg = document.getElementById('beforeImg');
-  const afterImg = document.getElementById('afterImg');
-  const compareWrap = document.getElementById('compareWrap');
-  const afterContainer = document.getElementById('afterContainer');
-  const slider = document.getElementById('slider');
-  const tools = document.getElementById('tools');
-  const mainCanvas = document.getElementById('mainCanvas');
-  const maskCanvas = document.getElementById('maskCanvas');
-  const canvasArea = document.getElementById('canvasArea');
-  const brushBtn = document.getElementById('brushBtn');
-  const eraseBtn = document.getElementById('eraseBtn');
-  const processBtn = document.getElementById('processBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
+    const bCtx = beforeCanvas.getContext("2d");
+    const aCtx = afterCanvas.getContext("2d");
 
-  let drawing = false;
-  let mode = "brush";
-  let ctx, maskCtx;
-  let loadedImage;
+    let img = new Image();
+    let drawing = false;
+    let brushMode = false;
 
-  uploadBox.onclick = () => fileInput.click();
+    let maskCanvas = document.createElement("canvas");
+    let maskCtx = maskCanvas.getContext("2d");
 
-  fileInput.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
+    let undoStack = [];
+    let redoStack = [];
 
-    const url = URL.createObjectURL(file);
-    beforeImg.src = url;
-    afterImg.src = url;
-    loadedImage = url;
+    uploadBox.onclick = () => fileInput.click();
 
-    beforeImg.onload = () => {
-      compareWrap.style.display = "block";
-      tools.style.display = "flex";
-      canvasArea.style.display = "block";
+    fileInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-      mainCanvas.width = beforeImg.width;
-      mainCanvas.height = beforeImg.height;
-      maskCanvas.width = beforeImg.width;
-      maskCanvas.height = beforeImg.height;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        img.onload = () => drawInitial();
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
 
-      ctx = mainCanvas.getContext('2d');
-      maskCtx = maskCanvas.getContext('2d');
+    function drawInitial() {
+      beforeCanvas.width = img.width;
+      beforeCanvas.height = img.height;
+      afterCanvas.width = img.width;
+      afterCanvas.height = img.height;
+      maskCanvas.width = img.width;
+      maskCanvas.height = img.height;
 
-      ctx.drawImage(beforeImg, 0, 0);
-    }
-  }
+      bCtx.drawImage(img, 0, 0);
+      maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
 
-  /* Brush Controls */
-  brushBtn.onclick = () => mode = "brush";
-  eraseBtn.onclick = () => mode = "erase";
-
-  maskCanvas.onmousedown = e => { drawing = true; draw(e); }
-  maskCanvas.onmouseup = () => drawing = false;
-  maskCanvas.onmousemove = e => drawing ? draw(e) : null;
-
-  function draw(e){
-    const rect = maskCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    maskCtx.fillStyle = mode === 'brush' ? 'rgba(0,255,0,0.8)' : 'rgba(0,0,0,1)';
-    maskCtx.beginPath();
-    maskCtx.arc(x, y, 20, 0, 2*Math.PI);
-    maskCtx.fill();
-  }
-
-  /* AI Processing (Simulated basic version) */
-  processBtn.onclick = () => {
-    const bw = beforeImg.width;
-    const bh = beforeImg.height;
-
-    const temp = document.createElement('canvas');
-    temp.width = bw;
-    temp.height = bh;
-    const tctx = temp.getContext('2d');
-
-    tctx.drawImage(beforeImg, 0, 0);
-    const imgData = tctx.getImageData(0, 0, bw, bh);
-    const maskData = maskCtx.getImageData(0, 0, bw, bh);
-
-    for (let i=0; i<imgData.data.length; i+=4){
-      const m = maskData.data[i+1]; // green channel = selected
-      if (!m) imgData.data[i+3] = 0; // remove everything except brushed area
+      undoStack = [];
+      redoStack = [];
     }
 
-    tctx.putImageData(imgData,0,0);
-    afterImg.src = temp.toDataURL('image/png');
-    downloadBtn.style.display = 'inline-block';
-  }
+    function saveState() {
+      undoStack.push(maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
+      redoStack = [];
+    }
 
-  downloadBtn.onclick = () => {
-    const a = document.createElement('a');
-    a.download = 'final.png';
-    a.href = afterImg.src;
-    a.click();
-  }
+    undoBtn.onclick = () => {
+      if (undoStack.length > 0) {
+        redoStack.push(maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
+        let prev = undoStack.pop();
+        maskCtx.putImageData(prev, 0, 0);
+        refreshBrushOverlay();
+      }
+    };
 
-  /* Before/After Slider */
-  let draggingSlider = false;
+    redoBtn.onclick = () => {
+      if (redoStack.length > 0) {
+        undoStack.push(maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
+        let next = redoStack.pop();
+        maskCtx.putImageData(next, 0, 0);
+        refreshBrushOverlay();
+      }
+    };
 
-  slider.onmousedown = () => draggingSlider = true;
-  document.onmouseup = () => draggingSlider = false;
-  document.onmousemove = e => {
-    if (!draggingSlider) return;
-    const rect = compareWrap.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    if (x < 0) x = 0;
-    if (x > rect.width) x = rect.width;
+    beforeCanvas.addEventListener("mousedown", e => {
+      if (!brushMode) return;
+      drawing = true;
+      saveState();
+      drawBrush(e);
+    });
 
-    afterContainer.style.width = x + 'px';
-    slider.style.left = x + 'px';
-  }
-</script></body>
+    beforeCanvas.addEventListener("mousemove", e => {
+      if (!drawing || !brushMode) return;
+      drawBrush(e);
+    });
+
+    window.addEventListener("mouseup", () => (drawing = false));
+
+    function getPos(e) {
+      const rect = beforeCanvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+
+    function drawBrush(e) {
+      const pos = getPos(e);
+      const size = Number(brushSizeSlider.value);
+      const soft = Number(brushSoftnessSlider.value);
+
+      let grad = maskCtx.createRadialGradient(pos.x, pos.y, size * soft, pos.x, pos.y, size);
+      grad.addColorStop(0, "white");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+
+      maskCtx.fillStyle = grad;
+      maskCtx.beginPath();
+      maskCtx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+      maskCtx.fill();
+
+      refreshBrushOverlay();
+    }
+
+    function refreshBrushOverlay() {
+      bCtx.drawImage(img, 0, 0);
+      bCtx.globalAlpha = 0.4;
+      bCtx.drawImage(maskCanvas, 0, 0);
+      bCtx.globalAlpha = 1;
+    }
+
+    brushModeBtn.onclick = () => {
+      brushMode = !brushMode;
+      brushModeBtn.textContent = brushMode ? "Brush Enabled" : "Enable Brush";
+    };
+
+    processBtn.onclick = () => {
+      const w = afterCanvas.width;
+      const h = afterCanvas.height;
+
+      aCtx.clearRect(0, 0, w, h);
+      aCtx.drawImage(img, 0, 0);
+
+      const imgData = aCtx.getImageData(0, 0, w, h);
+      const maskData = maskCtx.getImageData(0, 0, w, h);
+
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const m = maskData.data[i];
+        if (m < 50) imgData.data[i + 3] = 0;
+      }
+      aCtx.putImageData(imgData, 0, 0);
+    };
+
+    downloadBtn.onclick = () => {
+      const link = document.createElement("a");
+      link.download = "output.png";
+      link.href = afterCanvas.toDataURL();
+      link.click();
+    };
+  
+    // --- NEW FEATURES ADDED ---
+    // 1) Toggle Mask Visibility
+    let maskVisible = true;
+    const maskToggleBtn = document.createElement('button');
+    maskToggleBtn.textContent = "Hide Mask";
+    maskToggleBtn.className = "btn";
+    document.querySelector('.tools').append(maskToggleBtn);
+
+    maskToggleBtn.onclick = () => {
+      maskVisible = !maskVisible;
+      maskToggleBtn.textContent = maskVisible ? "Hide Mask" : "Show Mask";
+      refreshBrushOverlay();
+    };
+
+    // Override refresh to respect visibility
+    const oldRefresh = refreshBrushOverlay;
+    refreshBrushOverlay = function () {
+      bCtx.drawImage(img, 0, 0);
+      if (maskVisible) {
+        bCtx.globalAlpha = 0.4;
+        bCtx.drawImage(maskCanvas, 0, 0);
+        bCtx.globalAlpha = 1;
+      }
+    };
+
+    // 2) Smart Auto Edge Refine (client-side feathering)
+    processBtn.onclick = () => {
+      const w = afterCanvas.width;
+      const h = afterCanvas.height;
+      const radius = 2;
+
+      aCtx.clearRect(0, 0, w, h);
+      aCtx.drawImage(img, 0, 0);
+
+      const imgData = aCtx.getImageData(0, 0, w, h);
+      const maskData = maskCtx.getImageData(0, 0, w, h);
+
+      // Auto refine: blur mask edges slightly
+      const refined = new Uint8ClampedArray(maskData.data);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          let i = (y * w + x) * 4;
+          let sum = 0;
+          for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              let j = ((y + dy) * w + (x + dx)) * 4;
+              sum += maskData.data[j];
+            }
+          }
+          refined[i] = sum / ((radius * 2 + 1) ** 2);
+        }
+      }
+
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const m = refined[i];
+        if (m < 40) imgData.data[i + 3] = 0;
+      }
+
+      aCtx.putImageData(imgData, 0, 0);
+    };
+
+    // 3) Smart Object Detection Button (simple auto mask)
+    const smartSelectBtn = document.createElement('button');
+    smartSelectBtn.textContent = "Smart Object Select";
+    smartSelectBtn.className = "btn";
+    document.querySelector('.tools').append(smartSelectBtn);
+
+    smartSelectBtn.onclick = () => {
+      saveState();
+      // Quick contour-like bright detection
+      const temp = document.createElement('canvas');
+      const tCtx = temp.getContext('2d');
+      temp.width = img.width;
+      temp.height = img.height;
+      tCtx.drawImage(img, 0, 0);
+
+      const d = tCtx.getImageData(0, 0, temp.width, temp.height);
+      const m = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+
+      for (let i = 0; i < d.data.length; i += 4) {
+        const r = d.data[i], g = d.data[i + 1], b = d.data[i + 2];
+        if (r + g + b > 500) {
+          m.data[i] = 255;
+          m.data[i + 1] = 255;
+          m.data[i + 2] = 255;
+          m.data[i + 3] = 255;
+        }
+      }
+      maskCtx.putImageData(m, 0, 0);
+      refreshBrushOverlay();
+    };
+
+    // 4) Export format options
+    const exportSelect = document.createElement('select');
+    exportSelect.innerHTML = `
+      <option value="png">PNG (Transparent)</option>
+      <option value="jpg">JPG</option>
+      <option value="webp">WEBP</option>
+    `;
+    exportSelect.className = "btn";
+    document.querySelector('.tools').append(exportSelect);
+
+    downloadBtn.onclick = () => {
+      const format = exportSelect.value;
+      let link = document.createElement("a");
+      let quality = 0.92;
+
+      if (format === "jpg") {
+        link.href = afterCanvas.toDataURL("image/jpeg", quality);
+        link.download = "output.jpg";
+      } else if (format === "webp") {
+        link.href = afterCanvas.toDataURL("image/webp", quality);
+        link.download = "output.webp";
+      } else {
+        link.href = afterCanvas.toDataURL("image/png");
+        link.download = "output.png";
+      }
+
+      link.click();
+    };
+  </script></body>
 </html>
