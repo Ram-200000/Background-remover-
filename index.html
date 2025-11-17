@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Background Remover</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 40px;
+        }
+        #result-img {
+            margin-top: 20px;
+            max-width: 90%;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Background Remover Tool</h2>
+
+    <input type="file" id="imageInput" accept="image/*"><br><br>
+
+    <button onclick="removeBG()">Remove Background</button>
+
+    <div id="output"></div>
+
+    <script>
+        async function removeBG() {
+            let file = document.getElementById("imageInput").files[0];
+            if (!file) {
+                alert("Please upload an image first.");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("image", file);
+
+            let res = await fetch("https://api.remove.bg/v1.0/removebg", {
+                method: "POST",
+                headers: { "X-Api-Key": "YOUR_API_KEY_HERE" },
+                body: formData
+            });
+
+            let blob = await res.blob();
+            let url = URL.createObjectURL(blob);
+
+            document.getElementById("output").innerHTML =
+                `<img id="result-img" src="${url}">`;
+        }
+    </script>
+
+</body>
+                                 </html>
