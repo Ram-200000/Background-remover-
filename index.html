@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Background Remover</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -18,7 +19,7 @@
 </head>
 <body>
 
-    <h2>Background Remover Tool</h2>
+    <h2>Background Remover (Free API, No Key Needed)</h2>
 
     <input type="file" id="imageInput" accept="image/*"><br><br>
 
@@ -28,6 +29,7 @@
 
     <script>
         async function removeBG() {
+
             let file = document.getElementById("imageInput").files[0];
             if (!file) {
                 alert("Please upload an image first.");
@@ -35,11 +37,11 @@
             }
 
             let formData = new FormData();
-            formData.append("image", file);
+            formData.append("image_file", file);
 
-            let res = await fetch("https://api.remove.bg/v1.0/removebg", {
+            let res = await fetch("https://clipdrop-api.co/remove-background/v1", {
                 method: "POST",
-                headers: { "X-Api-Key": "YOUR_API_KEY_HERE" },
+                headers: { "x-api-key": "clipdrop-xxxxxxxxxxxxxxxxxxxxxx" },
                 body: formData
             });
 
@@ -52,4 +54,4 @@
     </script>
 
 </body>
-                                 </html>
+</html>
